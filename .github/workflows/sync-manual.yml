@@ -1,57 +1,33 @@
-name: Sync manual desde repo original
+name: Sync from Lucas Repo
 
 on:
   workflow_dispatch:
-
-permissions:
-  contents: write
+  schedule:
+    - cron: '0 0 * * *' # opcional, se ejecuta una vez por día
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (destino) - tu repo
+      - name: Checkout target repo (clinica)
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Checkout (origen) - repo original en carpeta upstream
-        uses: actions/checkout@v4
-        with:
-          repository: lucas12cn/IDW-38
-          path: upstream
-          fetch-depth: 0
-
-      - name: Asegurar rama main en destino
-        run: |
-          if git show-ref --verify --quiet refs/heads/main; then
-            git checkout main
-          elif git show-ref --verify --quiet refs/heads/master; then
-            git checkout master
-          else
-            git checkout -b main
-          fi
-
-      - name: Copiar archivos desde upstream (excluir .git y workflows)
-        run: |
-            rsync -av --delete --exclude '.git' --exclude '.github' upstream/ ./ || [ $? -eq 24 ]
-
-      - name: Configurar identidad del commit
+      - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Mostrar estado git (debug)
+      - name: Fetch latest from Lucas repo
         run: |
-          git status --porcelain
-          git --no-pager diff --name-status || true
+          git remote add upstream https://github.com/lucas12cn/IDW-38.git
+          git fetch upstream
+          git checkout main
+          git reset --hard upstream/main
 
-      - name: Commit y push si hay cambios
+      - name: Push to Gonzalo repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git add -A && git diff --cached --quiet; then
-            echo "No hay cambios para commitear."
-          else
-            git commit -m "Sync automático desde lucas12cn/IDW-38 [workflow]" || echo "No se pudo commitear"
-            git push origin HEAD
-          fi
+          git push origin main --force
