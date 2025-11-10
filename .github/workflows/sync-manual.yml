@@ -35,7 +35,7 @@ jobs:
 
       - name: Copiar archivos desde upstream (excluir .git y workflows)
         run: |
-          rsync -av --delete --exclude '.git' --exclude '.github' upstream/ ./
+            rsync -av --delete --exclude '.git' --exclude '.github' upstream/ ./ || [ $? -eq 24 ]
 
       - name: Configurar identidad del commit
         run: |
